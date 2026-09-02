@@ -39,52 +39,103 @@ function initUpload() {
     });
 }
 
+/* enhanced File Select Handler */
 function handleFileSelect(files) {
-    // Show all selected files
+    // Show selected file names
     const fileNames = Array.from(files).map(f => f.name).join(', ');
-    uploadText.innerHTML = `<span>Selected: ${fileNames}</span><p>to scan or upload documents</p>`;
+    uploadText.innerHTML = `<span>Selected: ${fileNames}</span><p>Documents ready for processing</p>`;
     
-    // Process each file
-    Array.from(files).forEach(file => {
+    // Process each file with proper error handling
+    Array.from(files).forEach((file, fileIndex) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-                // Create a temporary preview card
-                const existingPreview = document.querySelector('.file-preview');
-                if (existingPreview) existingPreview.remove();
-                
+                // Create preview card
                 const previewCard = document.createElement('div');
                 previewCard.className = 'file-preview';
                 previewCard.innerHTML = `
                     <div class="preview-image">
-                        <img src="${e.target.result}" alt="${file.name}" style="max-width: 100px; max-height: 100px;">
+                        <img src="${e.target.result}" alt="${file.name}" style="max-width: 120px; max-height: 120px; object-fit: contain;">
                     </div>
                     <div class="preview-info">
                         <span>${file.name}</span>
-                        <button class="process-btn">Process</button>
+                        <button class="process-btn" data-index="${fileIndex}">Process Document</button>
                     </div>
                 `;
                 
-                // Insert after upload area
+                // Insert after upload area - add new cards after existing ones
                 const uploadArea = document.getElementById('uploadArea');
                 uploadArea.insertAdjacentElement('afterend', previewCard);
                 
-                // Add process button handler
+                // Add process button handler with file index
                 const processBtn = previewCard.querySelector('.process-btn');
                 processBtn.addEventListener('click', () => {
-                    // Simulate HTR processing - extract text from file name or use placeholder
-                    const verifiedText = prompt(`Enter verified text for ${file.name}:`, '');
-                    if (verifiedText) {
-                        addDocumentToBatch(file.name, verifiedText);
-                        alert(`Document "${file.name}" added to batch processing queue`);
+                    const verifiedText = prompt(`Enter verified text for "${file.name}":`, '');
+                    if (verifiedText && verifiedText.trim()) {
+                        addDocumentToBatch(file.name, verifiedText.trim());
+                        showTransientMessage(`"${file.name}" added to batch queue`);
+                    } else if (!verifiedText) {
+                        showTransientMessage('No text entered, document not added');
                     }
                 });
             };
+            img.onerror = (err) => {
+                showTransientMessage(`Error loading "${file.name}": Unsupported format or corrupt file`);
+                console.error('Image load error:', err);
+            };
             img.src = e.target.result;
         };
+        reader.onerror = (err) => {
+            showTransientMessage(`Error reading "${file.name}": ${err.target.error.code}`);
+            console.error('FileReader error:', err);
+        };
+        
+        // Check file size (limit to 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            showTransientMessage(`"${file.name}" too large (${(file.size / 1024 / 1024).toFixed(1)}MB), max 10MB`);
+            return;
+        }
+        
+        // Check file type
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type) && !file.name.match(/\.(jpe?g|png|gif|webp)$/i)) {
+            showTransientMessage(`"${file.name}": Supported formats: JPEG, PNG, GIF, WebP`);
+            return;
+        }
+        
         reader.readAsDataURL(file);
     });
+}
+
+/* Transient message helper */
+function showTransientMessage(msg, duration = 3000) {
+    // Remove existing transient messages
+    const existing = document.querySelector('.transient-message');
+    if (existing) existing.remove();
+    
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'transient-message';
+    msgDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--primary);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 4px;
+        z-index: 1000;
+        font-size: 0.875rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    `;
+    msgDiv.textContent = msg;
+    document.body.appendChild(msgDiv);
+    
+    setTimeout(() => {
+        if (msgDiv.parentElement) {
+            msgDiv.parentElement.removeChild(msgDiv);
+        }
+    }, duration);
 }
 
 /* Batch Processing Queue */
@@ -98,17 +149,20 @@ function addDocumentToBatch(filename, verifiedText) {
     });
     
     updateBatchDisplay();
+    showTransientMessage(`"${filename}" added to batch queue`);
 }
 
 function updateBatchDisplay() {
     const batchSection = document.getElementById('batchDisplay');
+    const extractBtn = document.getElementById('extractAllBtn');
+    
     if (batchQueue.length === 0) {
         batchSection.innerHTML = '<p>No documents in batch queue</p>';
-        document.getElementById('extractAllBtn').style.display = 'none';
+        extractBtn.style.display = 'none';
         return;
     }
     
-    document.getElementById('extractAllBtn').style.display = 'block';
+    extractBtn.style.display = 'block';
     
     let html = `<h3>Batch Queue (${batchQueue.length} documents)</h3>`;
     html += '<div class="batch-items">';
@@ -117,7 +171,7 @@ function updateBatchDisplay() {
         html += `
             <div class="batch-item">
                 <span>${doc.filename}</span>
-                <textarea class="batch-textarea" data-index="${index}" rows="2">${doc.verifiedText}</textarea>
+                <textarea class="batch-textarea" data-index="${index}" rows="2" placeholder="Verified text...">${doc.verifiedText || ''}</textarea>
                 <button class="remove-batch-item" data-index="${index}">Remove</button>
             </div>
         `;
@@ -126,11 +180,16 @@ function updateBatchDisplay() {
     html += '</div>';
     batchSection.innerHTML = html;
     
-    // Add remove handlers
-    document.querySelectorAll('.remove-batch-item').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    // Add remove handlers (use event delegation approach)
+    const removeBtns = document.querySelectorAll('.remove-batch-item');
+    removeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
             const index = parseInt(btn.dataset.index);
             batchQueue.splice(index, 1);
+            // Re-index remaining textareas
+            document.querySelectorAll('.batch-textarea').forEach(ta => {
+                ta.dataset.index = parseInt(ta.dataset.index);
+            });
             updateBatchDisplay();
         });
     });
@@ -139,7 +198,9 @@ function updateBatchDisplay() {
     document.querySelectorAll('.batch-textarea').forEach(textarea => {
         textarea.addEventListener('input', (e) => {
             const index = parseInt(textarea.dataset.index);
-            batchQueue[index].verifiedText = e.target.value;
+            if (batchQueue[index]) {
+                batchQueue[index].verifiedText = e.target.value;
+            }
         });
     });
 }
@@ -345,45 +406,6 @@ function showSection(sectionId) {
     if (targetSection) {
         targetSection.style.display = 'block';
     }
-}
-
-/* Batch Export Result Display */
-function displayBatchExportResult(data, format) {
-    const exportResult = document.getElementById('exportResult');
-    const resultDiv = document.createElement('div');
-    
-    resultDiv.innerHTML = `
-        <h3>Batch Export Preview (${format.toUpperCase()})</h3>
-        <pre><code>${data}</code></pre>
-        <button id="copyBatchBtn">Copy to Clipboard</button>
-        <button id="downloadBtn">Download File</button>
-    `;
-    
-    exportResult.innerHTML = '';
-    exportResult.appendChild(resultDiv);
-    exportResult.style.display = 'block';
-    
-    // Copy button
-    const copyBatchBtn = document.getElementById('copyBatchBtn');
-    copyBatchBtn.addEventListener('click', () => {
-        const code = resultDiv.querySelector('code');
-        const text = code ? code.textContent || code.innerHTML : '';
-        navigator.clipboard.writeText(text).then(() => {
-            alert('Copied to clipboard!');
-        });
-    });
-    
-    // Download button
-    const downloadBtn = document.getElementById('downloadBtn');
-    downloadBtn.addEventListener('click', () => {
-        const blob = new Blob([data], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `inktogrid-batch-export-${new Date().toISOString().split('T')[0]}.${format}`;
-        a.click();
-        URL.revokeObjectURL(url);
-    });
 }
 
 // Initialize first section visibility

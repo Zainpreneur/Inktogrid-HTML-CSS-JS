@@ -102,13 +102,16 @@
                     <input type="file" id="fileInputBatch" accept="image/, PDF(.*)" style="display: none;">
                     <div>
                         <span>Drag & drop or click to add documents</span>
-                        <p>Max 10 files per batch</p>
+                        <p>Supported: JPEG, PNG, GIF, WebP | Max 10MB per file | Max 10 files per batch</p>
                     </div>
                 </div>
                 <div id="batchDisplay">No documents in batch queue</div>
                 <button id="extractAllBtn" style="width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">
                     Extract All Data
                 </button>
+                <p class="batch-hint" style="margin-top: 10px; font-size: 0.875color: var(--muted);">
+                    Click document thumbnails, enter verified text, then click "Extract All Data"
+                </p>
             </section>
         </main>
 
