@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inktogrid - Paper to ERP Staging</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Inktogrid</h1>
+            <p>Paper-to-ERP staging middleware (HTML/CSS/JS only)</p>
+        </header>
+
+        <main>
+            <section id="ingestion">
+                <h2>Document Ingestion</h2>
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="fileInput" accept="image/, PDF(.*)">
+                    <div class="upload-text">
+                        <span>Click or drag files here</span>
+                        <p>to scan or upload documents</p>
+                    </div>
+                </div>
+                <div class="camera-section" id="cameraSection" style="display:none;">
+                    <button id="openCameraBtn">Open Camera</button>
+                    <video id="previewVideo" autoplay muted></video>
+                    <canvas id="captureCanvas" style="display:none;"></canvas>
+                    <button id="captureBtn" style="display:none;">Capture</button>
+                </div>
+            </section>
+
+            <section id="htr" style="display:none;">
+                <h2>Handwriting Text Recognition (HTR)</h2>
+                <div class="htr-interface">
+                    <div class="original-image">
+                        <h3>Original</h3>
+                        <img id="originalImg" src="#" alt="Original document">
+                    </div>
+                    <div class="verified-text">
+                        <h3>Verified Text</h3>
+                        <div id="verifiedText" class="text-area" contenteditable="true">Enter text here...</div>
+                        <div id="confidenceBars" class="confidence-bars"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="schema" style="display:none;">
+                <h2>Dynamic Schema Builder</h2>
+                <div class="schema-builder">
+                    <div class="entity-fields">
+                        <h3>Entities & Fields</h3>
+                        <div id="entityFields">
+                            <div class="entity-row">
+                                <input type="text" placeholder="Entity name">
+                                <button class="add-field">+ Add Field</button>
+                                <button class="remove-entity">-</button>
+                            </div>
+                        </div>
+                        <button id="addEntity">+ Add Entity</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="validation" style="display:none;">
+                <h2>Cleansing & Validation</h2>
+                <p>Automatic standardization and correction dictionary active</p>
+                <div class="validation-status">
+                    <span>Date format: <strong>YYYY-MM-DD</strong></span>
+                    <span>Phone format: <strong>(XXX) XXX-XXXX</strong></span>
+                    <span>Amount: <strong>Currency + numeric</strong></span>
+                </div>
+            </section>
+
+            <section id="addendums" style="display:none;">
+                <h2>Batch Addendums</h2>
+                <p>Reopen exported batches to add corrections as linked addenda</p>
+            </section>
+
+            <section id="export" style="display:none;">
+                <h2>ERP Export</h2>
+                <div class="export-options">
+                    <label>
+                        <input type="radio" name="format" value="csv" checked> CSV
+                    </label>
+                    <label>
+                        <input type="radio" name="format" value="json"> JSON
+                    </label>
+                    <label>
+                        <input type="radio" name="format" value="sql"> SQL Insert
+                    </label>
+                </div>
+                <button id="exportBtn">Generate Export</button>
+                <div id="exportResult" class="export-result"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Inktogrid - Local-first, 100% offline</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
